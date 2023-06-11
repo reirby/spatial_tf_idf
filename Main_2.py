@@ -26,27 +26,29 @@ cell_lists = {}
 # init list of IDF for unique names for each level
 idf_list = {}
 
+# quad tree parameters
+maxCellSize = 2.16 #cell size in degrees for the top most level
+minCellSize = 0.1  #cell size in degrees for the bottom level
+llLat = 38.05      #Lattitude of lower left corner of the quad tree grid
+llLon = -84.83     #Longitude of lower left corner of the quad tree grid
+trgtLvl = 3         #The depth of the quad tree (number of levels)
 # Init  Level0
 
 level0 = {
-  "lat0": 38.05,
-  "lon0": -84.83,
-  "cell_size": 2.16,
+  "lvl":0,
+  "lat0": llLat,
+  "lon0": llLon,
+  "cell_size": maxCellSize,
   "heatmap": None
 }
 
-min_cell_size = 0.1
-function_call = 0
 
 
-# Define fillLevelHeatmap function
-
+# function generating a quad tree structure and sorting the name dots into corresponding cells
 
 def fill_level_heatmap(current_level, names_list, lat_list, lon_list):
-    global function_call
-    a = datetime.now()
-    print ('Calculating function_call: ' + str(function_call) + ' started at ' + str(a))
-    function_call += 1
+
+    print('Level: '+ str(current_level['lvl']) + ' Cell size: ' + str(current_level['cell_size']))
 
     # init heatmap for current level
     current_level["heatmap"] = [[0, 1], [2, 3]]
@@ -81,15 +83,16 @@ def fill_level_heatmap(current_level, names_list, lat_list, lon_list):
             current_name_list[current_name] += 1
 
     # fill lower levels
-    #print ('Starting init next level: '  + str(datetime.now()))
-    if current_level["cell_size"] > min_cell_size:
+    # if current_level["cell_size"] > minCellSize: # controll the quad tree depth with the cell size
+    if current_level["lvl"] < trgtLvl: # controll the quad tree depth with the number of levels
         for i in range(0,2,1):
             for j in range(0,2,1):
                 lower_level = current_level["heatmap"][i][j]["lower_level"]
                 lower_lat0 = current_level["lat0"] + i * current_level["cell_size"]
                 lower_lon0 = current_level["lon0"] + j * current_level["cell_size"]
                 lower_cell_size = current_level["cell_size"]/2
-                lower_level.update([("lat0", lower_lat0), ("lon0", lower_lon0), ("cell_size", lower_cell_size), ("heatmap", None)])
+                lower_lvl = current_level["lvl"]+1
+                lower_level.update([("lvl", lower_lvl),("lat0", lower_lat0), ("lon0", lower_lon0), ("cell_size", lower_cell_size), ("heatmap", None)])
                 #print ('Calling main function for the next level: '  + str(datetime.now()))
                 fill_level_heatmap(lower_level, names_list,lat_list,lon_list)
 
@@ -150,9 +153,9 @@ def calculate_tfidf(cell_lists):
         for j in range(len(cell_lists[i])):  # for each cell on the level
             print('processing cell #{}'.format(j), end='\r')
             current_namelist = cell_lists[i][j]
-            # for n in list(current_namelist.keys()):
-            #                  if type(current_namelist[n]) is int:
-            #                      current_namelist[n] = {"count": current_namelist[n], "tf-idf": None}
+            for n in list(current_namelist.keys()):
+                             if type(current_namelist[n]) is int:
+                                 current_namelist[n] = {"count": current_namelist[n], "tf-idf": None}
             name_count_sum = sum(d['count'] for d in current_namelist.values() if d)
             if name_count_sum == 0:
                 continue
